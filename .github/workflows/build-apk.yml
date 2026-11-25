@@ -1,0 +1,40 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract zip dan cari project
+        run: |
+          shopt -s nullglob
+          mkdir -p _src
+          for z in *.zip; do unzip -q -o "$z" -d _src; done
+          S=$(find . -name settings.gradle.kts -not -path './.git/*' | head -1)
+          echo "Project ditemukan di: $S"
+          echo "PROJ=$(dirname "$S")" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Build debug APK
+        run: gradle -p "$PROJ" assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LyricsPlusLink-debug-apk
+          path: ${{ env.PROJ }}/app/build/outputs/apk/debug/app-debug.apk
